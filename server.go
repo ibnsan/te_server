@@ -10,8 +10,13 @@ type formatData struct { //задаю формат для переменной �
 }
 
 func main() {
+	http.HandleFunc("/", form)
 	http.HandleFunc("/handler", handler) //собсно мой "обработчик"
 	http.ListenAndServe(":80", nil)
+}
+
+func form(w http.ResponseWriter, r *http.Request) { //загружаю страницу с формой
+	http.ServeFile(w, r, "form.html")
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -21,5 +26,3 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	temp, _ := template.ParseFiles("page.html") //пасрю страницу
 	temp.Execute(w, data)                       //передю страничке данные и вывожу ее
 }
-
-// test

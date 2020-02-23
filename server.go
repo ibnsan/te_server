@@ -22,3 +22,4 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	temp.Execute(w, data)                       //передю страничке данные и вывожу ее
 }
 
+// test

@@ -5,24 +5,42 @@ import (
 	"net/http"
 )
 
-type formatData struct { //задаю формат для переменной которая у меня будет в страничке
-	Text string
+type formatData struct {
+	login    string
+	password string
 }
 
 func main() {
-	http.HandleFunc("/", form)
-	http.HandleFunc("/handler", handler) //собсно мой "обработчик"
+	http.HandleFunc("/", check)
+	http.HandleFunc("/handlerLogin", handlerLogin)
+	http.HandleFunc("/handlerRegistration", handlerRegistration)
 	http.ListenAndServe(":80", nil)
 }
 
-func form(w http.ResponseWriter, r *http.Request) { //загружаю страницу с формой
-	http.ServeFile(w, r, "form.html")
+func check(w http.ResponseWriter, r *http.Request) {
+	temp, _ := template.ParseFiles("pages/login.html") //если пользователь не залогинен - пересылаю его на страницу логина
+
+	if len(r.Header["Cookie"]) != 0 && r.Header["Cookie"][0] == "auth=your_MD5_cookies" {
+		temp, _ := template.ParseFiles("pages/home.html") //если пользователь залогинен - пересылаю его на главную страницу
+	}
+	temp.Execute(w, temp) //если пользователь залогинен, передам сюда его данные (к примеру логин в переменную), чтобы затем высветить
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	data := formatData{ //указываю что нужно подгрузить в переменную на страничке
-		Text: r.FormValue("mood"),
+func handlerLogin(w http.ResponseWriter, r *http.Request) {
+	//здесь будет обработка данных при логине, проверка есть ли пользователь с таким логином и паролем
+	data := formatData{
+		login:    r.FormValue("login"),
+		password: r.FormValue("pass"),
 	}
-	temp, _ := template.ParseFiles("page.html") //пасрю страницу
-	temp.Execute(w, data)                       //передю страничке данные и вывожу ее
+	temp, _ := template.ParseFiles("page.html")
+	temp.Execute(w, data)
+}
+
+func handlerRegistration(w http.ResponseWriter, r *http.Request) {
+	//здесь обработка регистрации, проверка есть ли данные с таким логином\паролем, если такого логина нет тогда записываю его в бд и после направляю на главную страницу
+	data := formatData{
+		login: r.FormValue("mood"),
+	}
+	temp, _ := template.ParseFiles("page.html")
+	temp.Execute(w, data)
 }

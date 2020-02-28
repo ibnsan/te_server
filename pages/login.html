@@ -4,27 +4,29 @@
     <meta charset='utf-8'>
     <title>TO - site</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <link rel='stylesheet' type='text/css' media='screen' href='style/main.css'>
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/js-cookie@beta/dist/js.cookie.min.js"></script>
-    <script src="https://code.jquery.com/jquery-1.12.4.min.js" 
-        integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" 
-        crossorigin="anonymous">
-    </script>
+    <link rel="stylesheet" type="text/css" href="pages/style/main.css" />
      
 </head>
 <body>
     <div class="grid">
         <p class="p_headline">Hi ... Oh sorry, you have to log in =(, I need to collect your personal data for advertising</p>
+        <p class="p_text">{{ .Message}}</p>
+
         <div class="g_form">
-            <form method="POST" action=" http://localhost/handler" enctype="application/x-www-form-urlencoded">
-                <p>login: <input type="text" name="login" required></p>
+            <form method="POST" action=" http://localhost/handlerLogin" enctype="application/x-www-form-urlencoded">
+                <p>login: <input id="login" type="text" name="login" required></p>
                 <p>password: <input type="password" name="pass" required></p>
-                <input type="submit">
+                <button id="button">Login</button>
             </form>
             <a href="/registration.html"><p class="g_button">Registration</p></a>
         </div>
     </div>
+    <script>
+        $('#button').on('click', function () {
+            var auth = $.MD5($("#login").val());
+            Cookies.set("auth", auth);
+            location.reload();
+        });
+     </script>
 </body>
 </html>

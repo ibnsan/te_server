@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>TO - site</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" type="text/css" href="pages/style/main.css" />
+     
+</head>
+<body>
+    <div class="grid">
+        <p class="p_headline">Please enter your personal information. It will be passed on to anyone.</p>
+        <p class="p_text">{{ .Message}}</p>
+        <div class="g_form">
+            <form method="POST" action=" http://localhost/handlerRegistration" enctype="application/x-www-form-urlencoded">
+                <p>login: <input id="login" type="text" name="login" required></p>
+                <p>password: <input type="password" name="pass" required></p>
+                <p>name: <input type="text" name="name" required></p>
+                <p>you info...: <input type="text" name="info" maxlength="60"></p>
+                <button id="button">Register</button>
+            </form>
+            <p>(yes, you cannot go back, just go ahead!)</p>
+        </div>
+    </div>
+</body>
+</html>

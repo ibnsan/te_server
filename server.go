@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
@@ -16,19 +17,11 @@ var s = securecookie.New(hashKey, blockKey)
 
 type formatData struct {
 	id      int
-	login   string
+	Login   string
 	pass    string
 	Message string
-}
-
-func addCookie(w http.ResponseWriter, name string, value string) {
-	expire := time.Now().AddDate(0, 0, 1)
-	cookie := http.Cookie{
-		Name:    name,
-		Value:   value,
-		Expires: expire,
-	}
-	http.SetCookie(w, &cookie)
+	Name    string
+	Info    string
 }
 
 var cookies = map[string]*securecookie.SecureCookie{
@@ -43,46 +36,42 @@ var cookies = map[string]*securecookie.SecureCookie{
 }
 
 func main() {
+	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
 
 	http.HandleFunc("/", check)
 	http.HandleFunc("/handlerLogin", handlerLogin)
+	http.HandleFunc("/registration", registration)
 	http.HandleFunc("/handlerRegistration", handlerRegistration)
+	http.HandleFunc("/handlerLogout", handlerLogout)
 	http.ListenAndServe(":80", nil)
-	http.Handle("/js/", http.FileServer(http.Dir("path/to")))
 }
 
-func check(w http.ResponseWriter, r *http.Request) {
+func check(w http.ResponseWriter, r *http.Request) { //проверка авторизации
 
-	if cookie, err := r.Cookie("auth"); err == nil {
+	if cookie, err := r.Cookie("auth"); err == nil { //если есть куки о том что пользователь залогинен - перекидываю его сразу на домашнюю страницу
 		value := make(map[string]string)
 		err = securecookie.DecodeMulti("auth", cookie.Value, &value, cookies["current"], cookies["previous"])
 		if err == nil {
-			// fmt.Fprintf(w, "The value of foo is %q", value["login"])
-			temp, _ := template.ParseFiles("pages/home.html") //если пользователь залогинен - пересылаю его на главную страницу
-			temp.Execute(w, temp)
-		} else {
 			data := formatData{
-				Message: "make a mistake and I will remember that о_о",
+				Name:  value["name"],
+				Login: value["login"],
+				Info:  value["info"],
 			}
-			temp, _ := template.ParseFiles("pages/login.html") //если пользователь не залогинен - пересылаю его на страницу логина
-			temp.Execute(w, data)                              //если пользователь залогинен, передам сюда его данные (к примеру логин в переменную), чтобы затем высветить
-		}
-	}
+			temp, _ := template.ParseFiles("pages/home.html")
+			temp.Execute(w, data)
 
-	// if len(r.Header["Cookie"]) != 0 && r.Header["Cookie"][0] == "auth=your_MD5_cookies" {
-	// 	temp, _ := template.ParseFiles("pages/home.html") //если пользователь залогинен - пересылаю его на главную страницу
-	// 	temp.Execute(w, temp)
-	// } else {
-	// 	data := formatData{
-	// 		Message: "make a mistake and I will remember that о_о",
-	// 	}
-	// 	temp, _ := template.ParseFiles("pages/login.html") //если пользователь не залогинен - пересылаю его на страницу логина
-	// 	temp.Execute(w, data)                              //если пользователь залогинен, передам сюда его данные (к примеру логин в переменную), чтобы затем высветить
-	// }
+		}
+	} else { //если нет куков о том что пользователь залогинен
+		data := formatData{
+			Message: "make a mistake and I will remember that о_о",
+		}
+		temp, _ := template.ParseFiles("pages/login.html")
+		temp.Execute(w, data)
+	}
 
 }
 
-func handlerLogin(w http.ResponseWriter, r *http.Request) {
+func handlerLogin(w http.ResponseWriter, r *http.Request) { //обработка авторизации
 
 	db, err := sql.Open("mysql", "auser:12345678@/tes_bd")
 	if err != nil {
@@ -93,10 +82,10 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 	login := r.FormValue("login")
 	password := r.FormValue("pass")
 
-	row := db.QueryRow("select id from tes_bd.users where login = ? and pass = ?", login, password)
+	row := db.QueryRow("select id, name, info from tes_bd.users where login = ? and pass = ?", login, password)
 
 	p := formatData{}
-	err = row.Scan(&p.id)
+	err = row.Scan(&p.id, &p.Name, &p.Info)
 
 	if err != nil { //если логин и пароль ошибочны
 		data := formatData{
@@ -106,10 +95,10 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 		temp.Execute(w, data)
 
 	} else { //если логин и пароль верны
-		// addCookie(w, "TestCookieName", "TestValue")
-
 		value := map[string]string{
 			"login": login,
+			"name":  p.Name,
+			"info":  p.Info,
 		}
 		if encoded, err := securecookie.EncodeMulti("auth", value, cookies["current"]); err == nil {
 			cookie := &http.Cookie{
@@ -117,35 +106,71 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 				Value: encoded,
 				Path:  "/",
 			}
-			http.SetCookie(w, cookie)
+			http.SetCookie(w, cookie) //записываю данные в куки - можно конечно записать только логин или id, а потом по ним запросить все остальные данные
 		}
-
-		temp, _ := template.ParseFiles("pages/home.html")
-		temp.Execute(w, temp)
+		http.ServeFile(w, r, "/")
 	}
-
-	// test := p.id
-
-	// if test != nil {
-	// 	fmt.Println(p.id)
-	// } else {
-	// 	fmt.Println("Oh fuck you mean")
-	// }
-
-	// data := formatData{
-	// 	login:    r.FormValue("login"),
-	// 	pass: r.FormValue("pass"),
-	// }
-
-	// temp, _ := template.ParseFiles("page.html")
-	// temp.Execute(w, data)
 }
 
-func handlerRegistration(w http.ResponseWriter, r *http.Request) {
-	//здесь обработка регистрации, проверка есть ли данные с таким логином\паролем, если такого логина нет тогда записываю его в бд и после направляю на главную страницу
+func registration(w http.ResponseWriter, r *http.Request) { //загрузка страницы регистрации
 	data := formatData{
-		login: r.FormValue("mood"),
+		Message: "",
 	}
-	temp, _ := template.ParseFiles("page.html")
+	temp, _ := template.ParseFiles("pages/registration.html")
 	temp.Execute(w, data)
+}
+
+func handlerRegistration(w http.ResponseWriter, r *http.Request) { //обработка регистрации
+
+	//получаю данные из формы
+	login := r.FormValue("login")
+	password := r.FormValue("pass")
+	name := r.FormValue("name")
+	info := r.FormValue("info")
+
+	db, err := sql.Open("mysql", "auser:12345678@/tes_bd")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	row := db.QueryRow("select id from tes_bd.users where login = ?", login)
+
+	p := formatData{}
+	err = row.Scan(&p.id)
+	if err != nil { //проверяю, если пользователя с таким логином нет, регистрирую, если есть - пишу что нужен другой логин
+		result, err := db.Exec("insert into tes_bd.users (login, pass, name, info) values (?, ?, ?, ?)", login, password, name, info)
+		if err != nil {
+			panic(err)
+		} else {
+			data := formatData{
+				Message: "Yuhu, now you can log in (I hope you remember your password ...)",
+			}
+			temp, _ := template.ParseFiles("pages/login.html")
+			temp.Execute(w, data) //если регистрация успешна, направляю на страницу логина
+		}
+		fmt.Println(result.LastInsertId())
+		fmt.Println(result.RowsAffected())
+	} else {
+		data := formatData{
+			Message: "Wow ... sorry bro, but this login is already busy with someone, please be smarter",
+		}
+		temp, _ := template.ParseFiles("pages/registration.html")
+		temp.Execute(w, data)
+	}
+
+}
+
+func handlerLogout(w http.ResponseWriter, r *http.Request) { //обработка выхода
+	c := &http.Cookie{
+		Name:    "auth",
+		Value:   "",
+		Path:    "/",
+		Expires: time.Unix(0, 0),
+	}
+	http.SetCookie(w, c)
+
+	http.ServeFile(w, r, "/")
+
+	//тут есть проблема, почему то удалить куки можно только один раз, дальше они не удаляются, пока не понимаю почему (
 }

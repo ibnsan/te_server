@@ -18,15 +18,8 @@
                 <p>password: <input type="password" name="pass" required></p>
                 <button id="button">Login</button>
             </form>
-            <a href="/registration.html"><p class="g_button">Registration</p></a>
+            <a href="/registration"><p class="g_button">Registration</p></a>
         </div>
     </div>
-    <script>
-        $('#button').on('click', function () {
-            var auth = $.MD5($("#login").val());
-            Cookies.set("auth", auth);
-            location.reload();
-        });
-     </script>
 </body>
 </html>

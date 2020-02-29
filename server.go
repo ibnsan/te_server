@@ -101,10 +101,12 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) { //обработка
 			"info":  p.Info,
 		}
 		if encoded, err := securecookie.EncodeMulti("auth", value, cookies["current"]); err == nil {
+			expire := time.Now().Local().Add(3 * time.Minute)
 			cookie := &http.Cookie{
-				Name:  "auth",
-				Value: encoded,
-				Path:  "/",
+				Name:    "auth",
+				Value:   encoded,
+				Path:    "/",
+				Expires: expire,
 			}
 			http.SetCookie(w, cookie) //записываю данные в куки - можно конечно записать только логин или id, а потом по ним запросить все остальные данные
 		}

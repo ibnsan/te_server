@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -36,19 +37,21 @@ var cookies = map[string]*securecookie.SecureCookie{
 }
 
 func main() {
-	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
-
 	http.HandleFunc("/", check)
 	http.HandleFunc("/handlerLogin", handlerLogin)
 	http.HandleFunc("/registration", registration)
 	http.HandleFunc("/handlerRegistration", handlerRegistration)
 	http.HandleFunc("/handlerLogout", handlerLogout)
-	http.ListenAndServe(":80", nil)
+	err := http.ListenAndServe(":8666", nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
 }
 
-func check(w http.ResponseWriter, r *http.Request) { //проверка авторизации
+func check(w http.ResponseWriter, r *http.Request) {
 
-	if cookie, err := r.Cookie("auth"); err == nil { //если есть куки о том что пользователь залогинен - перекидываю его сразу на домашнюю страницу
+	if cookie, err := r.Cookie("auth"); err == nil {
 		value := make(map[string]string)
 		err = securecookie.DecodeMulti("auth", cookie.Value, &value, cookies["current"], cookies["previous"])
 		if err == nil {
@@ -61,7 +64,7 @@ func check(w http.ResponseWriter, r *http.Request) { //проверка авто
 			temp.Execute(w, data)
 
 		}
-	} else { //если нет куков о том что пользователь залогинен
+	} else {
 		data := formatData{
 			Message: "make a mistake and I will remember that о_о",
 		}
@@ -71,7 +74,7 @@ func check(w http.ResponseWriter, r *http.Request) { //проверка авто
 
 }
 
-func handlerLogin(w http.ResponseWriter, r *http.Request) { //обработка авторизации
+func handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	db, err := sql.Open("mysql", "auser:12345678@/tes_bd")
 	if err != nil {
@@ -87,14 +90,14 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) { //обработка
 	p := formatData{}
 	err = row.Scan(&p.id, &p.Name, &p.Info)
 
-	if err != nil { //если логин и пароль ошибочны
+	if err != nil {
 		data := formatData{
 			Message: "Oh, you were mistaken in the password or login ... oh my God what to do now =(",
 		}
 		temp, _ := template.ParseFiles("pages/login.html")
 		temp.Execute(w, data)
 
-	} else { //если логин и пароль верны
+	} else {
 		value := map[string]string{
 			"login": login,
 			"name":  p.Name,
@@ -108,13 +111,13 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) { //обработка
 				Path:    "/",
 				Expires: expire,
 			}
-			http.SetCookie(w, cookie) //записываю данные в куки - можно конечно записать только логин или id, а потом по ним запросить все остальные данные
+			http.SetCookie(w, cookie)
 		}
 		http.ServeFile(w, r, "/")
 	}
 }
 
-func registration(w http.ResponseWriter, r *http.Request) { //загрузка страницы регистрации
+func registration(w http.ResponseWriter, r *http.Request) {
 	data := formatData{
 		Message: "",
 	}
@@ -122,9 +125,8 @@ func registration(w http.ResponseWriter, r *http.Request) { //загрузка �
 	temp.Execute(w, data)
 }
 
-func handlerRegistration(w http.ResponseWriter, r *http.Request) { //обработка регистрации
+func handlerRegistration(w http.ResponseWriter, r *http.Request) {
 
-	//получаю данные из формы
 	login := r.FormValue("login")
 	password := r.FormValue("pass")
 	name := r.FormValue("name")
@@ -140,7 +142,7 @@ func handlerRegistration(w http.ResponseWriter, r *http.Request) { //обраб�
 
 	p := formatData{}
 	err = row.Scan(&p.id)
-	if err != nil { //проверяю, если пользователя с таким логином нет, регистрирую, если есть - пишу что нужен другой логин
+	if err != nil {
 		result, err := db.Exec("insert into tes_bd.users (login, pass, name, info) values (?, ?, ?, ?)", login, password, name, info)
 		if err != nil {
 			panic(err)
@@ -149,7 +151,7 @@ func handlerRegistration(w http.ResponseWriter, r *http.Request) { //обраб�
 				Message: "Yuhu, now you can log in (I hope you remember your password ...)",
 			}
 			temp, _ := template.ParseFiles("pages/login.html")
-			temp.Execute(w, data) //если регистрация успешна, направляю на страницу логина
+			temp.Execute(w, data)
 		}
 		fmt.Println(result.LastInsertId())
 		fmt.Println(result.RowsAffected())
@@ -163,7 +165,7 @@ func handlerRegistration(w http.ResponseWriter, r *http.Request) { //обраб�
 
 }
 
-func handlerLogout(w http.ResponseWriter, r *http.Request) { //обработка выхода
+func handlerLogout(w http.ResponseWriter, r *http.Request) {
 	c := &http.Cookie{
 		Name:    "auth",
 		Value:   "",

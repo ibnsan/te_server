@@ -25,6 +25,34 @@ type formatData struct {
 	Info    string
 }
 
+var db *sql.DB
+var tempLogin, tempRegister, tempHome *template.Template
+
+func init() {
+	var err error
+
+	db, err = sql.Open("mysql", "auser:12345678@/tes_bd")
+	if err != nil {
+		panic(err)
+	}
+
+	tempLogin, err = template.ParseFiles("pages/login.html")
+	if err != nil {
+		panic(err)
+	}
+
+	tempRegister, err = template.ParseFiles("pages/registration.html")
+	if err != nil {
+		panic(err)
+	}
+
+	tempHome, err = template.ParseFiles("pages/home.html")
+	if err != nil {
+		panic(err)
+	}
+
+}
+
 var cookies = map[string]*securecookie.SecureCookie{
 	"previous": securecookie.New(
 		securecookie.GenerateRandomKey(64),
@@ -37,7 +65,8 @@ var cookies = map[string]*securecookie.SecureCookie{
 }
 
 func main() {
-	http.HandleFunc("/", check)
+	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
+	http.HandleFunc("/", checkAuth)
 	http.HandleFunc("/handlerLogin", handlerLogin)
 	http.HandleFunc("/registration", registration)
 	http.HandleFunc("/handlerRegistration", handlerRegistration)
@@ -46,10 +75,9 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
 }
 
-func check(w http.ResponseWriter, r *http.Request) {
+func checkAuth(w http.ResponseWriter, r *http.Request) {
 
 	if cookie, err := r.Cookie("auth"); err == nil {
 		value := make(map[string]string)
@@ -60,42 +88,37 @@ func check(w http.ResponseWriter, r *http.Request) {
 				Login: value["login"],
 				Info:  value["info"],
 			}
-			temp, _ := template.ParseFiles("pages/home.html")
-			temp.Execute(w, data)
-
+			tempHome.Execute(w, data)
 		}
 	} else {
 		data := formatData{
 			Message: "make a mistake and I will remember that о_о",
 		}
-		temp, _ := template.ParseFiles("pages/login.html")
-		temp.Execute(w, data)
+		tempLogin.Execute(w, data)
 	}
 
 }
 
 func handlerLogin(w http.ResponseWriter, r *http.Request) {
-
-	db, err := sql.Open("mysql", "auser:12345678@/tes_bd")
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
+	r.ParseForm()
 	login := r.FormValue("login")
 	password := r.FormValue("pass")
 
 	row := db.QueryRow("select id, name, info from tes_bd.users where login = ? and pass = ?", login, password)
 
 	p := formatData{}
-	err = row.Scan(&p.id, &p.Name, &p.Info)
+	dataDB := row.Scan(&p.id, &p.Name, &p.Info)
 
-	if err != nil {
+	if dataDB == sql.ErrNoRows {
 		data := formatData{
 			Message: "Oh, you were mistaken in the password or login ... oh my God what to do now =(",
 		}
-		temp, _ := template.ParseFiles("pages/login.html")
-		temp.Execute(w, data)
+		tempLogin.Execute(w, data)
+	} else if dataDB != nil {
+		data := formatData{
+			Message: "Oh no, something happened to the database",
+		}
+		tempLogin.Execute(w, data)
 
 	} else {
 		value := map[string]string{
@@ -104,7 +127,7 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 			"info":  p.Info,
 		}
 		if encoded, err := securecookie.EncodeMulti("auth", value, cookies["current"]); err == nil {
-			expire := time.Now().Local().Add(3 * time.Minute)
+			expire := time.Now().Local().AddDate(1, 0, 0)
 			cookie := &http.Cookie{
 				Name:    "auth",
 				Value:   encoded,
@@ -121,28 +144,22 @@ func registration(w http.ResponseWriter, r *http.Request) {
 	data := formatData{
 		Message: "",
 	}
-	temp, _ := template.ParseFiles("pages/registration.html")
-	temp.Execute(w, data)
+	tempRegister.Execute(w, data)
 }
 
 func handlerRegistration(w http.ResponseWriter, r *http.Request) {
-
+	r.ParseForm()
 	login := r.FormValue("login")
 	password := r.FormValue("pass")
 	name := r.FormValue("name")
 	info := r.FormValue("info")
 
-	db, err := sql.Open("mysql", "auser:12345678@/tes_bd")
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
 	row := db.QueryRow("select id from tes_bd.users where login = ?", login)
 
 	p := formatData{}
-	err = row.Scan(&p.id)
-	if err != nil {
+	dataDB := row.Scan(&p.id)
+
+	if dataDB != nil {
 		result, err := db.Exec("insert into tes_bd.users (login, pass, name, info) values (?, ?, ?, ?)", login, password, name, info)
 		if err != nil {
 			panic(err)
@@ -150,8 +167,7 @@ func handlerRegistration(w http.ResponseWriter, r *http.Request) {
 			data := formatData{
 				Message: "Yuhu, now you can log in (I hope you remember your password ...)",
 			}
-			temp, _ := template.ParseFiles("pages/login.html")
-			temp.Execute(w, data)
+			tempLogin.Execute(w, data)
 		}
 		fmt.Println(result.LastInsertId())
 		fmt.Println(result.RowsAffected())
@@ -159,8 +175,7 @@ func handlerRegistration(w http.ResponseWriter, r *http.Request) {
 		data := formatData{
 			Message: "Wow ... sorry bro, but this login is already busy with someone, please be smarter",
 		}
-		temp, _ := template.ParseFiles("pages/registration.html")
-		temp.Execute(w, data)
+		tempRegister.Execute(w, data)
 	}
 
 }

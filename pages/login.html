@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>TO - site</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" type="text/css" href="/pages/style/main.css" />
+     
+</head>
+<body>
+    <div class="grid">
+        <p class="p_headline">Hi ... Oh sorry, you have to log in =(, I need to collect your personal data for advertising</p>
+        <p class="p_text">{{ .Message}}</p>
+
+        <div class="g_form">
+            <form method="POST" action="/handlerLogin" enctype="application/x-www-form-urlencoded">
+                <p>login: <input id="login" type="text" name="login" required></p>
+                <p>password: <input type="password" name="pass" required></p>
+                <button id="button">Login</button>
+            </form>
+            <a href="/registration"><p class="g_button">Registration</p></a>
+        </div>
+    </div>
+</body>
+</html>

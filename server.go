@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ibnsan/te_server/handlers"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/securecookie"
 )
@@ -65,8 +67,9 @@ var cookies = map[string]*securecookie.SecureCookie{
 }
 
 func main() {
-	http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
-	http.HandleFunc("/", checkAuth)
+
+	// http.Handle("/pages/style/", http.StripPrefix("/pages/style/", http.FileServer(http.Dir("pages/style"))))
+	http.HandleFunc("/", handlers.Сheckauth)
 	http.HandleFunc("/handlerLogin", handlerLogin)
 	http.HandleFunc("/registration", registration)
 	http.HandleFunc("/handlerRegistration", handlerRegistration)
@@ -75,28 +78,6 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-}
-
-func checkAuth(w http.ResponseWriter, r *http.Request) {
-
-	if cookie, err := r.Cookie("auth"); err == nil {
-		value := make(map[string]string)
-		err = securecookie.DecodeMulti("auth", cookie.Value, &value, cookies["current"], cookies["previous"])
-		if err == nil {
-			data := formatData{
-				Name:  value["name"],
-				Login: value["login"],
-				Info:  value["info"],
-			}
-			tempHome.Execute(w, data)
-		}
-	} else {
-		data := formatData{
-			Message: "make a mistake and I will remember that о_о",
-		}
-		tempLogin.Execute(w, data)
-	}
-
 }
 
 func handlerLogin(w http.ResponseWriter, r *http.Request) {

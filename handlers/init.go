@@ -2,13 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"fmt"
 	"html/template"
-	"log"
-	"net/http"
-	"time"
 
-
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/securecookie"
 )
 
@@ -63,4 +59,3 @@ var cookies = map[string]*securecookie.SecureCookie{
 		securecookie.GenerateRandomKey(32),
 	),
 }
-
